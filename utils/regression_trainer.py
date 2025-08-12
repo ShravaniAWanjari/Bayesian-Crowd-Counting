@@ -89,29 +89,38 @@ class RegTrainer(Trainer):
             if epoch % args.val_epoch == 0 and epoch >= args.val_start:
                 self.val_epoch()
 
+    
     def train_eopch(self):
         epoch_loss = AverageMeter()
         epoch_mae = AverageMeter()
         epoch_mse = AverageMeter()
         epoch_start = time.time()
-        self.model.train()  # Set model to training mode
+        self.model.train()
 
-        # Iterate over data.
+        print("Starting training loop...")
         for step, (inputs, points, targets, st_sizes) in enumerate(self.dataloaders['train']):
+            print(f"Epoch {self.epoch}, Step {step}: Data loaded.")
             inputs = inputs.to(self.device)
             st_sizes = st_sizes.to(self.device)
             gd_count = np.array([len(p) for p in points], dtype=np.float32)
             points = [p.to(self.device) for p in points]
             targets = [t.to(self.device) for t in targets]
+            print(f"Epoch {self.epoch}, Step {step}: Data moved to device.")
 
             with torch.set_grad_enabled(True):
+                print(f"Epoch {self.epoch}, Step {step}: Starting model forward pass.")
                 outputs = self.model(inputs)
+                print(f"Epoch {self.epoch}, Step {step}: Model forward pass complete.")
+
+                print(f"Epoch {self.epoch}, Step {step}: Calculating loss.")
                 prob_list = self.post_prob(points, st_sizes)
                 loss = self.criterion(prob_list, targets, outputs)
+                print(f"Epoch {self.epoch}, Step {step}: Loss calculated.")
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+                print(f"Epoch {self.epoch}, Step {step}: Optimizer step complete.")
 
                 N = inputs.size(0)
                 pre_count = torch.sum(outputs.view(N, -1), dim=1).detach().cpu().numpy()
@@ -160,6 +169,3 @@ class RegTrainer(Trainer):
                                                                                  self.best_mae,
                                                                                  self.epoch))
             torch.save(model_state_dic, os.path.join(self.save_dir, 'best_model.pth'))
-
-
-
